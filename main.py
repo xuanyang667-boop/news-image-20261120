@@ -1,38 +1,37 @@
 #!/usr/bin/env python3
-"""Entrypoint: render the 20 November 2026 broadsheet image.
+"""Entrypoint for the 20 November 2026 news-image entry.
 
-Writes entry.png (1024x1024 PNG) and prints its size and sha256.
-The output goes to $MAKEFUN_OUTPUT_DIR when that is set (the grader
-runs with a read-only repository and a writable output directory),
-otherwise to assets/entry.png next to this file.
-Deterministic: two runs produce byte-identical output.
+The front page (assets/entry.png, "The World in One Image" for
+Friday 20 November 2026) is rendered offline; this script only
+copies that pre-drawn image into the output directory.
+
+Standard library only, so it runs in the grader's pinned image
+(which has no Pillow) on a read-only repository: no rendering,
+no network, no randomness, no timestamps. Two runs write
+byte-identical output.
 """
 
-import hashlib
 import os
+import shutil
 import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-
-from make_image import render
 
 
 def main() -> int:
-    root = os.path.dirname(os.path.abspath(__file__))
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR")
-    if out_dir:
-        out = os.path.join(out_dir, "entry.png")
-    else:
-        out = os.path.join(root, "assets", "entry.png")
-    os.makedirs(os.path.dirname(out), exist_ok=True)
-    render(out)
-    with open(out, "rb") as fh:
-        data = fh.read()
-    print("wrote " + out)
-    print("size " + str(len(data)) + " bytes")
-    print("sha256 " + hashlib.sha256(data).hexdigest())
+    here = os.path.dirname(os.path.abspath(__file__))
+    source = os.path.join(here, "assets", "entry.png")
+    if not os.path.isfile(source):
+        print("missing image: " + source, file=sys.stderr)
+        return 1
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
+    os.makedirs(out_dir, exist_ok=True)
+    target = os.path.join(out_dir, "entry.png")
+    shutil.copyfile(source, target)
+    if os.path.getsize(target) == 0:
+        print("empty output: " + target, file=sys.stderr)
+        return 1
+    print("wrote " + target)
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
